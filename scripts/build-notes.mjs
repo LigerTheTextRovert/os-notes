@@ -59,6 +59,23 @@ function getHighlighter() {
 }
 
 let markedReady = false;
+let currentHeadings = [];
+let currentHeadingIds = new Set();
+
+function slugifyHeading(clean, idSet) {
+  let base = clean
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || 'section';
+  let slug = `toc-${base}`;
+  let uniqueSlug = slug;
+  let counter = 1;
+  while (idSet.has(uniqueSlug)) {
+    uniqueSlug = `${slug}-${counter++}`;
+  }
+  idSet.add(uniqueSlug);
+  return uniqueSlug;
+}
 
 async function ensureMarked() {
   if (markedReady) return;
@@ -72,6 +89,20 @@ async function ensureMarked() {
         const requested = (lang ?? '').trim().split(/\s+/)[0];
         const language = requested && loaded.has(requested) ? requested : 'text';
         return highlighter.codeToHtml(text, { lang: language, theme: SHIKI_THEME });
+      },
+      heading(arg) {
+        const depth = arg.depth;
+        const content = this.parser.parseInline(arg.tokens);
+        const cleanTitle = arg.text.replace(/[`*_~]/g, '').replace(/<[^>]+>/g, '').trim();
+
+        if (depth === 2 || depth === 3 || depth === 4) {
+          const id = slugifyHeading(cleanTitle, currentHeadingIds);
+          if (depth === 2 || depth === 3) {
+            currentHeadings.push({ depth, id, title: cleanTitle });
+          }
+          return `<h${depth} id="${id}">${content}</h${depth}>\n`;
+        }
+        return `<h${depth}>${content}</h${depth}>\n`;
       },
     },
   });
@@ -168,6 +199,8 @@ async function loadNotes() {
 }
 
 function renderMarkdown(source = '') {
+  currentHeadings = [];
+  currentHeadingIds = new Set();
   const figures = [];
   const placeholder = (i) => `<!--RAW_FIGURE_BLOCK_${i}-->`;
   const protectedMd = source.replace(/<figure[\s\S]*?<\/figure>/gi, (match) => {
@@ -178,7 +211,48 @@ function renderMarkdown(source = '') {
   figures.forEach((fig, i) => {
     html = html.replace(placeholder(i), fig);
   });
-  return html;
+  return { html, headings: [...currentHeadings] };
+}
+
+function renderToc(headings = []) {
+  if (!headings.length) return '';
+  const items = headings
+    .filter((h) => h.depth === 2 || h.depth === 3)
+    .map((h) => {
+      const cls = h.depth === 2 ? 'note-toc__item note-toc__item--h2' : 'note-toc__item note-toc__item--h3';
+      return `<li class="${cls}"><a href="#${h.id}" class="note-toc__link" data-toc-target="${h.id}">${escapeHtml(h.title)}</a></li>`;
+    })
+    .join('\n');
+
+  return `<nav class="note-toc" aria-label="فهرست محتوای فصل">
+  <p class="label note-toc__head">در این فصل</p>
+  <ul class="note-toc__list">
+${items}
+  </ul>
+</nav>`;
+}
+
+function renderMobileToc(headings = []) {
+  if (!headings.length) return '';
+  const items = headings
+    .filter((h) => h.depth === 2 || h.depth === 3)
+    .map((h) => {
+      const cls = h.depth === 2 ? 'mobile-toc__item mobile-toc__item--h2' : 'mobile-toc__item mobile-toc__item--h3';
+      return `<li class="${cls}"><a href="#${h.id}" class="mobile-toc__link">${escapeHtml(h.title)}</a></li>`;
+    })
+    .join('\n');
+
+  return `<details class="mobile-toc" aria-label="فهرست محتوای فصل">
+  <summary class="mobile-toc__summary">
+    <span class="mobile-toc__summary-text">فهرست مطالب این فصل</span>
+    <span class="mobile-toc__badge">${faDigits(headings.filter((h) => h.depth === 2 || h.depth === 3).length)} بخش</span>
+  </summary>
+  <div class="mobile-toc__content">
+    <ul class="mobile-toc__list">
+${items}
+    </ul>
+  </div>
+</details>`;
 }
 
 function renderModeBadge(note) {
@@ -291,7 +365,7 @@ function renderIndex(notes, template, includeDrafts = false) {
 function renderPage(note, template, allNotes = []) {
   const title = note.title;
   const summary = note.summary;
-  const body = renderMarkdown(note.body ?? '');
+  const { html: body, headings } = renderMarkdown(note.body ?? '');
   const dateValue = formatDate(note.date);
   const dateIso = isoDate(note.date);
   const minutes = note.minutes;
@@ -305,6 +379,8 @@ function renderPage(note, template, allNotes = []) {
     '%%TAGS%%': renderTags(note.tags),
     '%%MODE_BADGE%%': renderModeBadge(note),
     '%%BODY%%': body,
+    '%%TOC%%': renderToc(headings),
+    '%%MOBILE_TOC%%': renderMobileToc(headings),
     '%%SERIES_NAV%%': renderSeriesNav(note, allNotes),
     '%%SOURCE%%': renderSource(note),
     '%%ROBOTS%%': '',

@@ -2,7 +2,20 @@
 <html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <script>document.documentElement.classList.add('js');</script>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('vulkon-theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (saved === 'dark' || (!saved && prefersDark)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', '#171614');
+          }
+        } catch (e) {}
+      })();
+      document.documentElement.classList.add('js');
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>%%TITLE%% — Vulkon</title>
     <meta name="description" content="%%SUMMARY%%" />
@@ -35,40 +48,63 @@
           <span class="brand__mark" aria-hidden="true">VK</span>
           <span class="brand__name">Vulkon</span>
         </a>
-        <nav class="nav" aria-label="اصلی">
-          <a href="/#chapters" class="nav__link">فصل‌ها</a>
-          <a href="/#about" class="nav__link">درباره</a>
-          <a href="https://github.com/LigerTheTextRovert/vulkon" target="_blank" rel="noopener noreferrer" class="nav__link">گیت‌هاب ↗</a>
-        </nav>
+        <div class="masthead__actions">
+          <nav class="nav" aria-label="اصلی">
+            <a href="/#chapters" class="nav__link">فصل‌ها</a>
+            <a href="/#about" class="nav__link">درباره</a>
+            <a href="https://github.com/LigerTheTextRovert/vulkon" target="_blank" rel="noopener noreferrer" class="nav__link">گیت‌هاب ↗</a>
+          </nav>
+          <button type="button" class="theme-toggle" id="theme-toggle" aria-label="تغییر حالت شب و روز" title="تغییر پوسته">
+            <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+              </svg>
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
       </div>
     </header>
 
     <main id="main">
-      <div class="wrap note__wrap">
-        <div class="note__bar" data-reveal>
-          <p class="label note__back"><a href="/"><span aria-hidden="true">→</span> فهرست فصل‌ها</a></p>
-          <p class="label label--dim note__stamp">
-            <span>انتشار</span>
-            <time datetime="%%DATE_ISO%%">%%DATE_HUMAN%%</time>
-            <span aria-hidden="true">·</span>
-            <span>%%MINUTES%% دقیقه مطالعه</span>
-          </p>
+      <div class="wrap note__container">
+        <div class="note__main">
+          <div class="note__bar" data-reveal>
+            <p class="label note__back"><a href="/"><span aria-hidden="true">→</span> فهرست فصل‌ها</a></p>
+            <p class="label label--dim note__stamp">
+              <span>انتشار</span>
+              <time datetime="%%DATE_ISO%%">%%DATE_HUMAN%%</time>
+              <span aria-hidden="true">·</span>
+              <span>%%MINUTES%% دقیقه مطالعه</span>
+            </p>
+          </div>
+
+          <article class="note" lang="fa" dir="rtl">
+            <header class="note__head" data-reveal>
+              <h1 class="note__title">%%TITLE%%</h1>
+              <p class="note__summary">%%SUMMARY%%</p>
+              %%TAGS%%
+              %%MODE_BADGE%%
+            </header>
+
+            %%MOBILE_TOC%%
+
+            <div class="prose" data-reveal>
+%%BODY%%
+            </div>
+          </article>
+          %%SERIES_NAV%%
+          %%SOURCE%%
         </div>
 
-        <article class="note" lang="fa" dir="rtl">
-          <header class="note__head" data-reveal>
-            <h1 class="note__title">%%TITLE%%</h1>
-            <p class="note__summary">%%SUMMARY%%</p>
-            %%TAGS%%
-            %%MODE_BADGE%%
-          </header>
-
-          <div class="prose" data-reveal>
-%%BODY%%
-          </div>
-        </article>
-        %%SERIES_NAV%%
-        %%SOURCE%%
+        <aside class="note__sidebar" aria-label="فهرست مطالب جانبی">
+          %%TOC%%
+        </aside>
       </div>
     </main>
 
