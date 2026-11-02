@@ -1,0 +1,22 @@
+{
+  "name": "vulkon",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build-notes.mjs && tsc && vite build",
+    "preview": "vite preview",
+    "notes": "node scripts/build-notes.mjs"
+  },
+  "devDependencies": {
+    "gray-matter": "^4.0.3",
+    "marked": "^18.1.1",
+    "shiki": "^4.5.0",
+    "typescript": "~6.0.2",
+    "vite": "^5.4.21"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}

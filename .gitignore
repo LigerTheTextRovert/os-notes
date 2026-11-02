@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Logs & temp
+*.log
+.DS_Store
+*.local
+
+# Generated note pages
+/chapters/
+/index.html
