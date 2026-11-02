@@ -13,10 +13,25 @@ const INDEX_TEMPLATE = path.join(ROOT, 'src', 'templates', 'index.html');
 const CHAPTERS_DIR = path.join(ROOT, 'chapters');
 const INDEX_OUT = path.join(ROOT, 'index.html');
 
+const CHAPTER_META = {
+  1: {
+    title: 'فصل ۱ — آشنایی با سخت‌افزار و سیستم‌عامل',
+    code: 'OS01',
+  },
+  2: {
+    title: 'فصل ۲ — حفاظت، امنیت و ساختار سیستم',
+    code: 'OS02',
+  },
+  3: {
+    title: 'فصل ۳ — مدیریت پروسس‌ها و ارتباط بین آن‌ها',
+    code: 'OS03',
+  },
+};
+
 const CHAPTER_TITLES = {
-  1: 'فصل ۱ — آشنایی با سخت‌افزار و سیستم‌عامل (OS01)',
-  2: 'فصل ۲ — حفاظت، امنیت و ساختار سیستم (OS02)',
-  3: 'فصل ۳ — مدیریت پروسس‌ها و ارتباط بین آن‌ها (OS03)',
+  1: 'فصل ۱ — آشنایی با سخت‌افزار و سیستم‌عامل',
+  2: 'فصل ۲ — حفاظت، امنیت و ساختار سیستم',
+  3: 'فصل ۳ — مدیریت پروسس‌ها و ارتباط بین آن‌ها',
 };
 
 const MODE_LABEL = {
@@ -295,30 +310,32 @@ function renderSeriesNav(note, allNotes = []) {
   return `<nav class="series-nav" aria-label="فصل‌ها">${prevHtml}<a class="series-nav__index" href="/">فهرست</a>${nextHtml}</nav>`;
 }
 
-function renderChapterEntry(note, includeDrafts = false) {
-  const number = faDigits(note.section ?? String(note.order ?? '').padStart(2, '0'));
+function renderChapterEntry(note, index = 1, includeDrafts = false) {
+  const number = faDigits(String(note.topic ?? index).padStart(2, '0'));
   const title = escapeHtml(note.title);
   const summary = escapeHtml(note.summary);
-  const mode = MODE_LABEL[note.mode] ?? note.mode ?? 'یادداشت';
 
   if (note.draft && !includeDrafts) {
-    return `<div class="toc-item toc-item--soon">
-              <span class="toc-item__num">${number}</span>
+    return `<div class="toc-item toc-item--soon" role="listitem">
+              <span class="toc-item__num" aria-hidden="true">${number}</span>
               <div class="toc-item__body">
                 <span class="toc-item__title">${title}</span>
                 <span class="toc-item__desc">${summary}</span>
               </div>
-              <span class="toc-item__badge">${escapeHtml(mode)} · به‌زودی</span>
+              <span class="toc-item__action toc-item__action--soon">به‌زودی</span>
             </div>`;
   }
 
-  return `<a class="toc-item" href="${urlPath(note.slug)}">
-              <span class="toc-item__num">${number}</span>
+  return `<a class="toc-item" href="${urlPath(note.slug)}" role="listitem">
+              <span class="toc-item__num" aria-hidden="true">${number}</span>
               <div class="toc-item__body">
                 <span class="toc-item__title">${title}</span>
                 <span class="toc-item__desc">${summary}</span>
               </div>
-              <span class="toc-item__badge">${escapeHtml(mode)}</span>
+              <span class="toc-item__action">
+                <span class="toc-item__action-text">مشاهده خلاصه</span>
+                <span class="toc-item__arrow" aria-hidden="true">←</span>
+              </span>
             </a>`;
 }
 
@@ -333,26 +350,35 @@ function renderIndex(notes, template, includeDrafts = false) {
   const sections = [...chapters.entries()]
     .sort(([a], [b]) => a - b)
     .map(([chapter, items]) => {
-      const entries = [...items]
-        .sort(byOrder)
-        .map((note) => renderChapterEntry(note, includeDrafts))
+      const sortedItems = [...items].sort(byOrder);
+      const entries = sortedItems
+        .map((note, index) => renderChapterEntry(note, index + 1, includeDrafts))
         .join('\n');
-      const title = CHAPTER_TITLES[chapter] ?? `فصل ${faDigits(chapter)}`;
-      return `<section class="os-toc__chapter">
+      const meta = CHAPTER_META[chapter] ?? {
+        title: CHAPTER_TITLES[chapter] ?? `فصل ${faDigits(chapter)}`,
+        code: `OS${String(chapter).padStart(2, '0')}`,
+      };
+      return `<section class="os-toc__chapter" aria-labelledby="chapter-${chapter}">
         <header class="os-toc__head">
-          <h2 class="os-toc__title">${escapeHtml(title)}</h2>
-          <span class="label label--dim">${faDigits(items.length)} بخش</span>
+          <h2 class="os-toc__title" id="chapter-${chapter}">${escapeHtml(meta.title)}</h2>
+          <span class="os-toc__code" dir="ltr">${escapeHtml(meta.code)}</span>
         </header>
-        <div class="os-toc__list">${entries}</div>
+        <div class="os-toc__list" role="list">${entries}</div>
       </section>`;
     })
     .join('\n');
 
   const published = includeDrafts ? notes.length : notes.filter((n) => !n.draft).length;
+  const drafts = notes.length - published;
+  const statusLabel = drafts > 0
+    ? `${faDigits(published)} فصل در دسترس · ${faDigits(drafts)} در دست تکمیل`
+    : `${faDigits(published)} فصل در دسترس`;
+
   const replacements = {
     '%%OS_CHAPTERS%%': sections,
     '%%OS_PUBLISHED%%': faDigits(published),
-    '%%OS_DRAFTS%%': faDigits(notes.length - published),
+    '%%OS_DRAFTS%%': faDigits(drafts),
+    '%%OS_STATUS_LABEL%%': statusLabel,
   };
 
   let html = template;
